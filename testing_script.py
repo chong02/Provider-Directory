@@ -25,7 +25,7 @@ providers = pd.json_normalize(json_object.get('entry'))
 print('Initial Request Successful! Hang tight this will take quite some time...')
 page_number = 1
 
-while True:
+while page_number < 50:
     try:
         if page_number % 100 == 0:
             print(f'Completed: {page_number}')
