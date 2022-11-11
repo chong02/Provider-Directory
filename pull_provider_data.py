@@ -25,7 +25,7 @@ while True:
         next_url = json_object.get('link')[1].get('url')
         next_request = requests.get(next_url)
         next_json = next_request.json()
-        uhc_providers = pd.concat([uhc_providers, pd.json_normalize(next_json.get('entry'))])
+        providers = pd.concat([providers, pd.json_normalize(next_json.get('entry'))])
         page_number += 1
     except:
         print('Done!')
