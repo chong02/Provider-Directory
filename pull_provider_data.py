@@ -1,21 +1,18 @@
 import pandas as pd
 import sys
+import os.path
 import requests
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
-import os.path
 
 # Determine carrier from commmand line
 carrier = sys.argv[1]
 if carrier == 'uhc':
     url = 'https://public.fhir.flex.optum.com/R4/Location?_count=100&address-state=CA'
+    add_on = ''
 elif carrier == 'anthem':
     url = 'https://cmsmanapi.anthem.com/fhir/cms_mandate/mcd/Location?_count=100&address-state=CA'
-
-# Check if file already exists
-file_existence = os.path.isfile(f'ca_{carrier}_providers.csv')
-if file_existence:
-    sys.exit('File already exists! Delete file and run script again')
+    add_on = '&address-state=CA'
 
 # Pull data from carrier API
 session = requests.Session()
@@ -35,15 +32,20 @@ while True:
     try:
         if page_number % 100 == 0:
             print(f'Completed: {page_number}')
-        next_url = json_object.get('link')[1].get('url')
+        next_url = json_object.get('link')[1].get('url') + add_on
         next_request = session.get(next_url)
+<<<<<<< HEAD
         json_object = next_request.json()
         providers = pd.concat([providers, pd.json_normalize(json_object.get('entry'))])
+        providers.to_csv(f'ca_{carrier}_providers.csv', mode='a', index=False)
+=======
+        next_json = next_request.json()
+        providers = pd.concat([providers, pd.json_normalize(next_json.get('entry'))])
+>>>>>>> parent of 6baf739 (general debugging and verify no file)
         page_number += 1
     except Exception as e:
         print(e)
         print(f'Total Number of Pages: {page_number}')
+        print(f'DataFrame Shape: {providers.shape}')
         print('Done!')
         break
-
-providers.to_csv(f'ca_{carrier}_providers.csv', index=False)

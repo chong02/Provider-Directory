@@ -9,3 +9,7 @@ that such a database/directory will help them be better able to access the care 
 might need. This is still very much a work in progress as I haven't done a lot of previous
 work with APIs, and we are still determining the optimal way of visualizing/displaying this 
 database.
+
+## `anthem_test_map.html`
+This file contains an interactive `gpd.explore()` map visualization mapping 7,010 providers in the
+state of CA that are a part of Anthem's provider network.
