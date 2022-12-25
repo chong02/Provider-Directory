@@ -35,14 +35,9 @@ while page_number < requested_pages:
             print(f'Completed: {page_number}')
         next_url = json_object.get('link')[1].get('url') + add_on
         next_request = session.get(next_url)
-<<<<<<< HEAD
         json_object = next_request.json()
         providers = pd.concat([providers, pd.json_normalize(json_object.get('entry'))])
         providers.to_csv(f'ca_{carrier}_providers.csv', index=False)
-=======
-        next_json = next_request.json()
-        providers = pd.concat([providers, pd.json_normalize(next_json.get('entry'))])
->>>>>>> parent of 6baf739 (general debugging and verify no file)
         page_number += 1
     except Exception as e:
         print(e)
