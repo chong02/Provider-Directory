@@ -1,0 +1,11 @@
+# Mac files
+.DS_Store
+
+# ipynb checkpoints
+*.ipnyb_checkpoints
+
+# Photos
+*.png
+
+# PDFs
+*.pdf
