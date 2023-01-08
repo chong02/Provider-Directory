@@ -537,18 +537,16 @@ kaiser_providers = kaiser_providers.drop(labels=['ID', 'id_code'],
 # Create csv or append to existing file
 if file_exists:
     print('Writing to providers.csv')
-    kaiser_providers.to_csv('providers.csv',
-                            mode='a',
-                            index=False,
-                            header=False)
+    og_kaiser_providers = pd.read_csv('providers.csv')
+    new_kaiser_providers = pd.concat([og_kaiser_providers,
+                                      kaiser_providers])
     # Check for duplicates
     print('Checking for duplicates...')
-    updated_kaiser_providers = pd.read_csv('providers.csv')
-    length = updated_kaiser_providers.shape[0]
-    kaiser_providers = updated_kaiser_providers.drop_duplicates()
-    kaiser_providers.to_csv('providers.csv',
-                             index=False)
-    updated_length = kaiser_providers.shape[0]
+    length = new_kaiser_providers.shape[0]
+    updated_kaiser_providers = new_kaiser_providers.drop_duplicates(subset='id')
+    updated_kaiser_providers.to_csv('providers.csv',
+                                    index=False)
+    updated_length = updated_kaiser_providers.shape[0]
     if length != updated_length:
         diff = length - updated_length
         print(f'{diff} duplicate(s) found')
