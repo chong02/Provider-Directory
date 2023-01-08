@@ -399,7 +399,7 @@ page = 1
 print(f'Working on it...')
 
 # First page
-provider_list = json_object.get('entry') #.get('resource').get('id')
+provider_list = json_object.get('entry')
 healthcareService_refs = get_healthcareService_refs(provider_list)
 healthcareServiceUrls = [base_url + ref for ref in healthcareService_refs]
 location_refs = [provider.get('resource').get('location')[0].get('reference')
@@ -496,4 +496,3 @@ else:
     print('Creating toy_data.csv')
     kaiser_providers.to_csv('toy_data.csv',
                             index=False)
-    
