@@ -10,6 +10,13 @@ might need. This is still very much a work in progress as I haven't done a lot o
 work with APIs, and we are still determining the optimal way of visualizing/displaying this 
 database.
 
-## `anthem_test_map.html`
-This file contains an interactive `gpd.explore()` map visualization mapping 7,010 providers in the
-state of CA that are a part of Anthem's provider network.
+Currently, the project has evolved slightly in its scope/intended use. Per CMS's [May 2020
+Interoperability and Patient Access File Rule](https://www.hhs.gov/guidance/document/cms-9115-f-faqs#112)
+(CMS-9115-F), insurance companies (often referred to by CMS as payers) are required (better put: asked)
+to provide a public-facing provider directory API for Medicare and Medicaid plans. Although many
+are still in the works of developing theirs, this project intends to capitalize on this standardized
+(at least in theory) API across all insurance companies to provide a one-stop-shop location for
+people to find the specialists they might need (particularly for behavioral/mental health visits).
+
+Hopefully in the coming months this project will be more fleshed out and prototype version of some sort
+built out sometime soon. :)
