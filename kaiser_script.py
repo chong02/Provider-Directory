@@ -215,8 +215,11 @@ def extract_network_name(providers_networks):
                             for network in network_object]
             networks = [kaiser_networks[raw_network] for raw_network in networks_raw]
             translated_networks.append(networks)
-        except AttributeError:
+        except AttributeError: # Catch not accepting patients
             translated_networks.append(['Not accepting patients'])
+        except KeyError: # Catch unrecognized networks
+            print('Unrecognized network. Please manually review and edit network')
+            translated_networks.append(['Unrecognized network'])
     return translated_networks
 
 def network_finder(network_token, df):
