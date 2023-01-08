@@ -400,7 +400,7 @@ total_pages = total // 50 + 1
 print(f'Total Entries: {total}')
 print(f'Entries per Page: {entries_per_page}')
 page = 1
-print(f'Working on Page {page}!')
+print(f'Working on Page {page}...')
 
 # First page
 provider_list = json_object.get('entry') #.get('resource').get('id')
