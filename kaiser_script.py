@@ -446,7 +446,7 @@ page += 1
 # Repeat above to account for pagination
 while page <= total_pages:
     next_json_object = requests.get(next_url).json()
-    print(f'Working on Page {page}!')
+    print(f'Working on Page {page}...')
     provider_list = next_json_object.get('entry')
     try:
         healthcareService_refs = get_healthcareService_refs(provider_list)
