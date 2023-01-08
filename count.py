@@ -1,18 +1,20 @@
+# Import libraries
 import sys
 import requests
 
 # Global variables
-carrier = sys.argv[0]
-city = sys.argv[1]
+carrier = sys.argv[1]
+city = sys.argv[2]
 
-if carrier == 'Kaiser' | carrier == 'kaiser':
-    base_url = 'https://kpx-service-bus.kp.org/service/hp/mhpo/healthplanproviderv1rc/PractitionerRole'
+if carrier == 'Kaiser' or carrier == 'kaiser':
+    base_url = 'https://kpx-service-bus.kp.org/service/hp/mhpo/healthplanproviderv1rc/PractitionerRole?'
     search_param = f'location.address-city={city}'
 else:
-    sys.exit('Error: carrier name not recognized')
+    sys.exit(f'Error: carrier name ({carrier}) not recognized')
 
 full_query = base_url + search_param
-json_object = requests.get(full_query)
+request = requests.get(full_query)
+json_object = request.json()
 total_entries = json_object.get('total')
 
 print(f'{carrier} providers in {city}: {total_entries}')
