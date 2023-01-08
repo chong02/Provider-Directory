@@ -12,7 +12,7 @@ file_exists = os.path.exists('providers.csv')
 base_url = 'https://kpx-service-bus.kp.org/service/hp/mhpo/healthplanproviderv1rc/'
 practitionerRole = 'PractitionerRole?'
 city = sys.argv[1]
-search_param = f'location.address-city={city}'
+search_param = f'location.address-city={city}&location.address-state=CA'
 full_query = base_url + practitionerRole + search_param
 kaiser_networks = {'Exclusive_Provider_Organization_(EPO)_CN': 'Kaiser EPO Network',
                    'HMO_CN': 'Kaiser HMO Network',

@@ -8,7 +8,7 @@ city = sys.argv[2]
 
 if carrier == 'Kaiser' or carrier == 'kaiser':
     base_url = 'https://kpx-service-bus.kp.org/service/hp/mhpo/healthplanproviderv1rc/PractitionerRole?'
-    search_param = f'location.address-city={city}'
+    search_param = f'location.address-city={city}&location.address-state=CA'
 else:
     sys.exit(f'Error: carrier name ({carrier}) not recognized')
 
