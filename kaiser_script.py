@@ -291,6 +291,34 @@ def city_lookup(df_kaiser):
         cities.append(city)
     return cities
 
+def extract_state_zip(address):
+    '''
+    Function that extracts city postal code and the zip code from
+    an address, address, as a string
+    -----
+    Input:
+    
+    address (str) - Singular address as a string
+    -----
+    Output:
+    
+    state_zip (list) - Python list of length one containing state, zip
+                       match
+    -----
+    Example:
+    
+    >>> address = "5601 Arnold Rd Dublin CA 94568"
+    >>> extract_state_zip(address)
+    ['CA 94568']
+    '''
+    try:
+        state_zip = re.findall(r'\w{2}\s\d+$', address)
+    except TypeError: # Catch error thrown when no address found in database
+        state_zip = ['No address found in database']
+        print('No address found in database')
+    return state_zip
+    state_zip = [re.findall(r'\w{2}\s\d+$', address) for address in kaiser_providers['Address'].values]
+
 def add_carriers(df):
     '''
     Creates a list of insurance carrier for each listing in df
@@ -513,7 +541,7 @@ kaiser_providers['Kaiser Senior Advantage Network'] = network_finder('Medicare',
 
 # Add state and zip code
 cities = city_lookup(kaiser_providers)
-state_zip = [re.findall(r'\w{2}\s\d+$', address) for address in kaiser_providers['Address'].values]
+state_zip = [extract_state_zip(address) for address in kaiser_providers['Address'].values]
 state_zip_split = [re.split(r'\s', state_w_zip[0]) for state_w_zip in state_zip]
 states = [split[0] for split in state_zip_split]
 zip_codes = [split[1] for split in state_zip_split]
