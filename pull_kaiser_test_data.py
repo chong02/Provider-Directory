@@ -6,6 +6,7 @@ import re
 import pandas as pd
 import numpy as np
 from geopy.geocoders import Nominatim
+import json
 
 # Define global variables
 file_exists = os.path.exists('toy_data.csv')
@@ -186,7 +187,10 @@ def get_coordinates(addresses):
     '''
     coordinates = []
     for address in addresses:
-        coordinate = nominatim_lookup(address)
+        try:
+            coordinate = nominatim_lookup(address)
+        except json.decoder.JSONDecodeError: # Catch unable to find coordinates error
+            coordinate = ['Unable to find', 'Unable to find']
         coordinates.append(coordinate)
     return coordinates
 
