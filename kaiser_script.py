@@ -5,8 +5,11 @@ import requests
 import re
 import pandas as pd
 import numpy as np
+import warnings
+warnings.simplefilter("ignore", UserWarning)
 from geopy.geocoders import Nominatim
 import json
+import psycopg2
 
 # Define global variables
 file_exists = os.path.exists('providers.csv')
@@ -190,7 +193,7 @@ def get_coordinates(addresses):
         try:
             coordinate = nominatim_lookup(address)
         except json.decoder.JSONDecodeError: # Catch unable to find coordinates error
-            coordinate = ['Unable to find', 'Unable to find']
+            coordinate = ['100.0', '200.0'] # Invalid coordinates to be entered in database
         coordinates.append(coordinate)
     return coordinates
 
@@ -223,7 +226,8 @@ def extract_network_name(providers_networks):
         except AttributeError: # Catch not accepting patients
             translated_networks.append(['Not accepting patients'])
         except KeyError: # Catch unrecognized networks
-            print('Unrecognized network. Please manually review and edit network')
+            print('Unrecognized network. Please manually review and edit network (see below)')
+            print(f'{networks}')
             translated_networks.append(['Unrecognized network'])
     return translated_networks
 
@@ -314,10 +318,9 @@ def extract_state_zip(address):
     try:
         state_zip = re.findall(r'\w{2}\s\d+$', address)
     except TypeError: # Catch error thrown when no address found in database
-        state_zip = ['No address found in database']
+        state_zip = ['XX 00000']
         print('No address found in database')
     return state_zip
-    state_zip = [re.findall(r'\w{2}\s\d+$', address) for address in kaiser_providers['Address'].values]
 
 def add_carriers(df):
     '''
@@ -392,40 +395,6 @@ def add_accepting_patients_status(df):
             status = 1
         active_status.append(status)
     return active_status
-
-def add_carrier_code(df):
-    '''
-    Create a list of full IDs for each provider in df
-    -----
-    Input:
-    
-    df (DataFrame) - Pandas DataFrame with provider listings
-    -----
-    Output:
-    
-    ids (list) - List of ids as strings
-    '''
-    ids = []
-    for carrier in df['Carrier'].values:
-        if carrier == 'Aetna':
-            carrier_code = 'AT'
-        elif carrier == 'Anthem':
-            carrier_code = 'AN'
-        elif carrier == 'Blue Shield':
-            carrier_code = 'BS'
-        elif carrier == 'Cigna':
-            carrier_code = 'CG'
-        elif carrier == 'Kaiser':
-            carrier_code = 'KP'
-        elif carrier == 'Oscar Health':
-            carrier_code = 'OS'
-        elif carrier == 'UnitedHealthcare':
-            carrier_code = 'UN'
-        else:
-            carrier_code = 'XX'
-        full_id = carrier_code + '-'
-        ids.append(full_id)
-    return ids
 
 # Make API calls
 request = requests.get(full_query)
@@ -556,18 +525,21 @@ kaiser_providers['Carrier'] = add_carriers(kaiser_providers)
 kaiser_providers['Accepting Patients'] = add_accepting_patients_status(kaiser_providers)
 
 # Add ids
-IDs = add_carrier_code(kaiser_providers)
-kaiser_providers.insert(loc=0,
-                        column='ID',
-                        value=IDs)
-full_ids = kaiser_providers['ID'].values + kaiser_providers['id_code'].values
+full_ids = kaiser_providers['id_code'].values
 kaiser_providers.insert(loc=0,
                         column='id',
                         value=full_ids)
-kaiser_providers = kaiser_providers.drop(labels=['ID', 'id_code'],
+kaiser_providers = kaiser_providers.drop(labels=['id_code'],
                                          axis=1)
 
-# Create csv or append to existing file
+# Create csv or append to existing file and push changes to database
+conn = psycopg2.connect(database="provider_directory",
+                        user='postgres', 
+                        password='',
+                        host='localhost',
+                        port='5432')
+cursor = conn.cursor()
+
 if file_exists:
     print('Writing to providers.csv')
     og_kaiser_providers = pd.read_csv('providers.csv')
@@ -585,7 +557,16 @@ if file_exists:
         print(f'{diff} duplicate(s) found')
     else:
         print('No duplicates found!')
+    print('Updating providers table...')
+    update_providers_table_file = open('update_providers_table.sql', 'r')
+    cursor.execute(update_providers_table_file.read())
+    conn.commit()
 else:
-    print('Creating providers.csv')
+    print('Creating providers.csv...')
     kaiser_providers.to_csv('providers.csv',
                             index=False)
+    print('Writing to database...')
+    create_providers_sql_file = open('create_providers_table.sql', 'r')
+    cursor.execute(create_providers_sql_file.read())
+    conn.commit()
+conn.close()
