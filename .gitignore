@@ -9,3 +9,6 @@
 
 # PDFs
 *.pdf
+
+# Pycache
+__pycache__
