@@ -13,11 +13,17 @@ import psycopg2
 
 # Define global variables
 file_exists = os.path.exists('providers.csv')
-base_url = 'https://kpx-service-bus.kp.org/service/hp/mhpo/healthplanproviderv1rc/'
+insurance_carrier = sys.argv[1]
+if insurance_carrier == 'United':
+    base_url = 'https://public.fhir.flex.optum.com/R4/'
+    supplement = '&_count=100'
+elif insurance_carrier == 'Kaiser':
+    base_url = 'https://kpx-service-bus.kp.org/service/hp/mhpo/healthplanproviderv1rc/'
 practitionerRole = 'PractitionerRole?'
-city = sys.argv[1]
+city = sys.argv[2]
 search_param = f'location.address-city={city}&location.address-state=CA'
-full_query = base_url + practitionerRole + search_param
+supplement = ''
+full_query = base_url + practitionerRole + search_param + supplement
 kaiser_networks = {'Exclusive_Provider_Organization_(EPO)_CN': 'Kaiser EPO Network',
                    'HMO_CN': 'Kaiser HMO Network',
                    'Medi-Cal_Managed_Care_CN': 'Kaiser Medi-Cal Network',
@@ -50,7 +56,7 @@ def get_healthcareService_refs(provider_list):
             healthcareService_refs.append('None')
     return healthcareService_refs
 
-def get_specialties(healthcareServiceUrls):
+def extract_specialty_and_number(healthcareServiceUrls):
     '''
     Function that takes a HealthcareService API call and extracts the provider taxonomy code
     and the corresponding plain English specialty
@@ -59,7 +65,7 @@ def get_specialties(healthcareServiceUrls):
     
     healthcareServiceUrls (list) - List of strings corresponding to HealthcareService resource API call
     -----
-    Output:
+    Outputs:
     
     specialties (list) - 2D list of provider taxonomy codes and corresponding plain English
                          specialty
@@ -68,55 +74,207 @@ def get_specialties(healthcareServiceUrls):
              [taxonomy_code, specialty],
                    ...          ...
              [taxonomy_code, specialty]]
+    
+    numbers (list) - 1D list of provider phone numbers
     '''
     specialties = []
+    numbers = []
     for url in healthcareServiceUrls:
         request = requests.get(url)
         json_object = request.json()
         specialty_object = json_object.get('specialty')
-        specialty = [None, None]
+        contact_object = json_object.get('telecom')[0]
         try:
             specialty_dict = specialty_object[0].get('coding')[0]
             code = specialty_dict.get('code')
             display_name = specialty_dict.get('display')
             specialty = [code, display_name]
-        except TypeError:
+        except TypeError: # Catch TypeError raised if no specialty listed
             specialty = [None, None]
+        number = contact_object.get('value')
         specialties.append(specialty)
-    return specialties
+        numbers.append(number)
+    return specialties, numbers
 
-def get_names_addresses_and_numbers(location_urls):
+def extract_healthcareservice_resource(healthcareServiceUrls, carrier):
     '''
-    Function that extracts the provider name, street addresses, and
-    phone number/contact info from Location API calls
+    Function that takes a HealthcareService API call and extracts the provider taxonomy code
+    and the corresponding plain English specialty
     -----
     Input:
     
-    location_urls (list) - List of strings corresponding to Location resource API calls
+    healthcareServiceUrls (list) - List of strings corresponding to HealthcareService resource API call
+
+    carrier (str)
+    -----
+    Output(s):
+    
+    **************************
+    *  If carrier != United  *
+    **************************
+    specialties (list) - 2D list of provider taxonomy codes and corresponding plain English
+                         specialty
+                         
+            [[taxonomy_code, specialty],
+             [taxonomy_code, specialty],
+                   ...          ...
+             [taxonomy_code, specialty]]
+
+    **************************
+    *  If carrier == United  *
+    **************************
+    specialties (list) - 2D list of provider taxonomy codes and corresponding plain English
+                         specialty
+                         
+            [[taxonomy_code, specialty],
+             [taxonomy_code, specialty],
+                   ...          ...
+             [taxonomy_code, specialty]]
+
+    numbers (list) - See extract_specialty_and_position
+    '''
+    if carrier == 'United':
+        return extract_specialty_and_number(healthcareServiceUrls)        
+    else:
+        specialties = []
+    for url in healthcareServiceUrls:
+        
+        request = requests.get(url)
+        json_object = request.json()
+        specialty_object = json_object.get('specialty')
+        try:
+            specialty_dict = specialty_object[0].get('coding')[0]
+            code = specialty_dict.get('code')
+            display_name = specialty_dict.get('display')
+            specialty = [code, display_name]
+        except TypeError: # Catch TypeError raised if no specialty listed
+            specialty = ['Not listed', 'Not listed']
+        specialties.append(specialty)
+    return specialties
+
+def extract_name_address_coordinates(location_urls):
+    '''
+    Function that extracts all information from Location resource API calls
+    United variant
+    -----
+    Input:
+
+    location_urls (list) - List of strings corresponding to Location resrouce API calls
     -----
     Outputs:
-    
     names (list) - List of provider names as strings
     
     addresses (list) - List of street addresses as strings
+        
+    cities (list) - List of provider cities as strings
     
-    numbers (list) - List of provider phone numbers as strings
+    states (list) - List of provider state as strings (postal code)
+    
+    zips (list) - List of provider zip codes as strings (postal code)
+
+    coordinates (list) - 2D list of coordinates
+
+            [[latitude, longitude],
+             [latitude, longitude],
+                 ...       ...
+             [latitude, longitude]]
     '''
     names = []
     addresses = []
-    numbers = []
+    cities = []
+    states = []
+    zips = []
     for url in location_urls:
         request = requests.get(url)
         json_object = request.json()
         name = json_object.get('name')
         address_object = json_object.get('address')
-        contact_object = json_object.get('telecom')[0]
+        coordinate_object = json_object.get('position')
         street_address = address_object.get('text')
-        number = contact_object.get('value')
+        city = address_object.get('city')
+        state = address_object.get('state')
+        zip_code = address_object.get('postalCode')[:5]
+        lat = coordinate_object.get('latitude')
+        lon = coordinate_object.get('longitude')
+        coordinate = [lat, lon]
         names.append(name)
         addresses.append(street_address)
-        numbers.append(number)
-    return names, addresses, numbers
+        cities.append(city)
+        states.append(state)
+        zips.append(zip_code)
+        coordinates.append(coordinate)
+    return names, addresses, cities, states, zips, coordinates
+
+def extract_location_resource(location_urls, carrier):
+    '''
+    Function that extracts all information from Location resource API calls
+    Calls helper function for certain carriers (see extract_name_address)
+    -----
+    Inputs:
+    
+    location_urls (list) - List of strings corresponding to Location resource API calls
+
+    carrier (str) - String designating insurance carrier
+    -----
+    Outputs:
+    
+    **************************
+    *  If carrier != United  *
+    **************************
+    names (list) - List of provider names as strings
+    
+    addresses (list) - List of street addresses as strings
+    
+    numbers (list) - List of provider phone numbers as strings
+    
+    cities (list) - List of provider cities as strings
+    
+    states (list) - List of provider state as strings (postal code)
+    
+    zips (list) - List of provider zip codes as strings (postal code)
+
+    **************************
+    *  If carrier == United  *
+    **************************
+    names (list) - See extract_name_address_coordinates
+    
+    addresses (list) - See extract_name_address_coordinates
+        
+    cities (list) - See extract_name_address_coordinates
+    
+    states (list) - See extract_name_address_coordinates
+    
+    zips (list) - See extract_name_address_coordinates
+
+    coordinates (list) - See extract_name_address_coordinates
+    '''
+    if carrier == 'United':
+        return extract_name_address_coordinates(location_urls)
+    else:
+        names = []
+        addresses = []
+        numbers = []
+        cities = []
+        states = []
+        zips = []
+        for url in location_urls:
+            request = requests.get(url)
+            json_object = request.json()
+            name = json_object.get('name')
+            address_object = json_object.get('address')
+            contact_object = json_object.get('telecom')[0]
+            street_address = address_object.get('text')
+            number = contact_object.get('value')
+            city = address_object.get('city')
+            state = address_object.get('state')
+            zip_code = address_object.get('postalCode')[:5]
+            names.append(name)
+            addresses.append(street_address)
+            numbers.append(number)
+            cities.append(city)
+            states.append(state)
+            zips.append(zip_code)
+        return names, addresses, numbers, cities, states, zips
 
 def clean_address(address):
     '''
@@ -408,7 +566,7 @@ page = 1
 print(f'Working on Page {page}...')
 
 # First page
-provider_list = json_object.get('entry') #.get('resource').get('id')
+provider_list = json_object.get('entry')
 healthcareService_refs = get_healthcareService_refs(provider_list)
 healthcareServiceUrls = [base_url + ref for ref in healthcareService_refs]
 location_refs = [provider.get('resource').get('location')[0].get('reference')
@@ -418,11 +576,19 @@ network_objects = [providers_networks.get('resource').get('extension')[1:]
                    for providers_networks in json_object.get('entry')]
 
 id_codes = [provider.get('resource').get('id') for provider in provider_list]
-specialties = get_specialties(healthcareServiceUrls)
+if insurance_carrier == 'United':
+    specialties, numbers = extract_healthcareservice_resource(healthcareServiceUrls,
+                                                              insurance_carrier)
+    names, addresses, cities, states, zip_codes, coordinates = extract_location_resource(location_urls,
+                                                                                         insurance_carrier)
+else:
+    specialties = extract_healthcareservice_resource(healthcareServiceUrls,
+                                                     insurance_carrier)
+    names, numbers, addresses, cities, states, zip_codes = extract_location_resource(location_urls,
+                                                                                     insurance_carrier)
+    coordinates = get_coordinates(addresses)
 codes = [specialty[0] for specialty in specialties]
 specialty_names = [specialty[1] for specialty in specialties]
-names, addresses, numbers = get_names_addresses_and_numbers(location_urls)
-coordinates = get_coordinates(addresses)
 latitudes = [coordinate[0] for coordinate in coordinates]
 longitudes = [coordinate[1] for coordinate in coordinates]
 networks = extract_network_name(network_objects)
